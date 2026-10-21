@@ -19,9 +19,16 @@ COPY shared ./shared
 COPY backend ./backend
 COPY frontend ./frontend
 
-RUN npm run build -w shared \
+
+# Удаляем старый кэш TypeScript, чтобы сборка не использовала
+# информацию от предыдущей компиляции.
+RUN rm -f shared/tsconfig.tsbuildinfo \
+          backend/tsconfig.tsbuildinfo \
+          frontend/tsconfig.tsbuildinfo \
+ && npm run build -w shared \
  && npm run build -w backend \
  && npm run build -w frontend
+
 
 # Оставляем только рабочие зависимости.
 RUN npm prune --omit=dev
