@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-slate-50 text-slate-900 antialiased; }
+  /* Поля ввода не должны быть мельче 16px: иначе iOS увеличивает страницу
+     при фокусе, и вёрстка «прыгает». */
+  input, select, textarea { font-size: 16px; }
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition
+         disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]; }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800; }
+  .btn-secondary { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+  .btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .btn-ghost { @apply btn text-slate-600 hover:bg-slate-100; }
+
+  .card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
+  .card-body { @apply p-4 sm:p-6; }
+
+  .field { @apply w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900 shadow-sm
+           outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 min-h-[44px]; }
+  .label { @apply mb-1.5 block text-sm font-medium text-slate-700; }
+  .hint { @apply mt-1 text-xs text-slate-500; }
+  .error-text { @apply mt-1 text-xs text-red-600; }
+
+  .badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium; }
+  .prose-content { @apply text-slate-700 leading-relaxed; }
+  .prose-content h2 { @apply mt-6 mb-3 text-xl font-semibold text-slate-900; }
+  .prose-content h3 { @apply mt-5 mb-2 text-lg font-semibold text-slate-900; }
+  .prose-content h4 { @apply mt-4 mb-2 font-semibold text-slate-900; }
+  .prose-content p { @apply mb-3; }
+  .prose-content ul { @apply mb-3 list-disc space-y-1 pl-5; }
+  .prose-content ol { @apply mb-3 list-decimal space-y-1 pl-5; }
+  .prose-content blockquote { @apply my-3 border-l-4 border-brand-200 bg-brand-50 py-2 pl-4 italic; }
+  .prose-content a { @apply text-brand-600 underline; }
+}

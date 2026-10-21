@@ -1,0 +1,59 @@
+# Локальный запуск всей системы одной командой: docker compose up -d
+#
+# Для боевой среды замените пароли и секреты, а том с данными PostgreSQL
+# вынесите на постоянное хранилище с резервным копированием.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tbedu
+      POSTGRES_PASSWORD: tbedu
+      POSTGRES_DB: tbedu
+      # Сортировка и регистр для русских текстов.
+      LANG: ru_RU.utf8
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      # Порт наружу нужен только для отладки; в боевой среде строку можно убрать.
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tbedu -d tbedu"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgres://tbedu:tbedu@db:5432/tbedu
+      # ОБЯЗАТЕЛЬНО замените перед выходом в интернет.
+      SESSION_SECRET: ${SESSION_SECRET:?укажите SESSION_SECRET длиной не менее 32 символов}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?укажите ENCRYPTION_KEY длиной не менее 32 символов}
+      BOOTSTRAP_ADMIN_LOGIN: ${BOOTSTRAP_ADMIN_LOGIN:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-admin123}
+      BOOTSTRAP_ORG_NAME: ${BOOTSTRAP_ORG_NAME:-Моя организация}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      FILE_STORAGE: local
+      FILE_STORAGE_DIR: /app/storage-data
+    ports:
+      - "3000:3000"
+    volumes:
+      - files:/app/storage-data
+    # Миграции применяются до старта сервера: база всегда соответствует коду.
+    command: >
+      sh -c "node backend/dist/scripts/migrate.js &&
+             node backend/dist/scripts/seed.js &&
+             node backend/dist/main.js"
+
+volumes:
+  db-data:
+  files:
