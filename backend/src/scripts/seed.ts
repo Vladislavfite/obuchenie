@@ -116,7 +116,7 @@ async function seedAdmin(organizationId: string) {
 
   if (role[0]) await db.insert(schema.userRoles).values({ userId: user.id, roleId: role[0].id });
 
-  console.log(`  администратор: ${login} / ${config.bootstrap.password} (смена пароля при первом входе)`);
+  console.log(`  администратор: ${login} (смена пароля при первом входе)`);
   return user;
 }
 

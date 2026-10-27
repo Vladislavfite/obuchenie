@@ -79,11 +79,32 @@ function Stat({ label, value, tone = 'slate' }: { label: string; value: unknown;
 }
 
 export function Users() {
+  const queryClient = useQueryClient();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['users'], queryFn: () => api.get<any[]>('/api/users?limit=100'),
   });
   const toast = useToast();
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ fullName: '', login: '', password: '' });
+  const [createError, setCreateError] = useState('');
+
+  const createManager = useMutation({
+    mutationFn: () => api.post('/api/users', { ...form, roleCodes: ['MANAGER'] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      setCreating(false);
+      setForm({ fullName: '', login: '', password: '' });
+      setCreateError('');
+      toast.show('Руководитель создан. При первом входе потребуется сменить пароль.');
+    },
+    onError: (e) => {
+      if (e instanceof ApiError) {
+        const details = Object.values(e.fieldErrors).join(' ');
+        setCreateError([e.message, details].filter(Boolean).join(' '));
+      } else setCreateError('Не удалось создать руководителя.');
+    },
+  });
 
   const reset = useMutation({
     mutationFn: (id: string) => api.post<{ tempPassword: string }>(`/api/users/${id}/reset-password`),
@@ -96,7 +117,8 @@ export function Users() {
 
   return (
     <div>
-      <PageHeader title="Пользователи" subtitle={`Всего: ${data?.length ?? 0}`} />
+      <PageHeader title="Пользователи" subtitle={`Показано: ${data?.length ?? 0}`}
+        actions={<button type="button" className="btn-primary" onClick={() => { setCreateError(''); setCreating(true); }}>Создать руководителя</button>} />
       <div className="space-y-2">
         {data?.map((u) => (
           <div key={u.id} className="card"><div className="card-body py-3">
@@ -119,6 +141,15 @@ export function Users() {
         ))}
       </div>
 
+      <Modal open={creating} title="Создать руководителя" onClose={() => { if (!createManager.isPending) setCreating(false); }}>
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setCreateError(''); createManager.mutate(); }}>
+          <label className="block"><span className="label">ФИО</span><input className="field" required maxLength={200} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
+          <label className="block"><span className="label">Логин</span><input className="field" required minLength={3} maxLength={32} autoComplete="off" value={form.login} onChange={(e) => setForm({ ...form, login: e.target.value })} /><span className="hint">Латинские буквы, цифры, точка, дефис или подчёркивание.</span></label>
+          <label className="block"><span className="label">Временный пароль</span><input className="field" type="password" required minLength={8} maxLength={200} autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /><span className="hint">Не менее 8 символов. При первом входе его нужно сменить.</span></label>
+          {createError && <p role="alert" className="text-sm text-red-600">{createError}</p>}
+          <button type="submit" className="btn-primary" disabled={createManager.isPending}>{createManager.isPending ? 'Создание…' : 'Создать'}</button>
+        </form>
+      </Modal>
       <Modal open={!!tempPassword} title="Временный пароль" onClose={() => setTempPassword(null)}
         footer={<button type="button" className="btn-primary" onClick={() => setTempPassword(null)}>Понятно</button>}>
         <p className="mb-3 text-sm text-slate-700">Пароль показывается один раз. Передайте его пользователю.</p>
