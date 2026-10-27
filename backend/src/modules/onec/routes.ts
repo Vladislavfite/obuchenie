@@ -3,7 +3,7 @@ import { and, eq, desc, sql } from 'drizzle-orm';
 import { onecSettingsSchema, onecSyncSchema, PERMISSION, suggestLogin, slugify } from '@tbedu/shared';
 import { db, schema } from '../../db/client.js';
 import { ok } from '../../core/response.js';
-import { requireAuth, requirePermission } from '../../core/context.js';
+import { requireAuth, requirePermission, requireRole } from '../../core/context.js';
 import { encryptSecret, decryptSecret } from '../../core/crypto.js';
 import { hashPassword, generateTempPassword } from '../../core/password.js';
 import { NotFound, IntegrationError } from '../../core/errors.js';
@@ -19,7 +19,7 @@ import { createTransport, pick, type OnecPayload } from './transport.js';
 
 export async function onecRoutes(app: FastifyInstance) {
   app.get('/api/integrations/1c',
-    { onRequest: [requireAuth, requirePermission(PERMISSION.INTEGRATION_ONEC)] },
+    { onRequest: [requireAuth, requirePermission(PERMISSION.INTEGRATION_ONEC), requireRole('ADMIN', 'SUPER_ADMIN')] },
     async (request) => {
       const rows = await db.select().from(schema.integrations)
         .where(and(eq(schema.integrations.organizationId, request.user.organizationId),
@@ -32,7 +32,7 @@ export async function onecRoutes(app: FastifyInstance) {
     });
 
   app.put('/api/integrations/1c',
-    { onRequest: [requireAuth, requirePermission(PERMISSION.INTEGRATION_ONEC)] },
+    { onRequest: [requireAuth, requirePermission(PERMISSION.INTEGRATION_ONEC), requireRole('ADMIN', 'SUPER_ADMIN')] },
     async (request) => {
       const body = onecSettingsSchema.parse(request.body);
 
@@ -67,7 +67,7 @@ export async function onecRoutes(app: FastifyInstance) {
     });
 
   app.post('/api/integrations/1c/sync',
-    { onRequest: [requireAuth, requirePermission(PERMISSION.INTEGRATION_ONEC)] },
+    { onRequest: [requireAuth, requirePermission(PERMISSION.INTEGRATION_ONEC), requireRole('ADMIN', 'SUPER_ADMIN')] },
     async (request) => {
       const body = onecSyncSchema.parse(request.body ?? {});
       const orgId = request.user.organizationId;
@@ -248,7 +248,7 @@ export async function onecRoutes(app: FastifyInstance) {
     });
 
   app.get('/api/integrations/1c/logs',
-    { onRequest: [requireAuth, requirePermission(PERMISSION.INTEGRATION_ONEC)] },
+    { onRequest: [requireAuth, requirePermission(PERMISSION.INTEGRATION_ONEC), requireRole('ADMIN', 'SUPER_ADMIN')] },
     async (request) => {
       const rows = await db.select({ log: schema.integrationSyncLogs })
         .from(schema.integrationSyncLogs)

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { CurrentUser } from '@tbedu/shared';
+import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from './api';
 
 /* Состояние текущего пользователя.
@@ -11,7 +12,7 @@ import { api, ApiError } from './api';
 interface AuthState {
   user: CurrentUser | null;
   loading: boolean;
-  login(login: string, password: string): Promise<void>;
+  login(login: string, password: string, cabinet: 'admin' | 'manager' | 'employee'): Promise<void>;
   logout(): Promise<void>;
   refresh(): Promise<void>;
   can(permission: string): boolean;
@@ -21,6 +22,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,11 +42,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthState = {
     user,
     loading,
-    async login(loginName, password) {
-      setUser(await api.post<CurrentUser>('/api/auth/login', { login: loginName, password }));
+    async login(loginName, password, cabinet) {
+      const current = await api.post<CurrentUser>('/api/auth/login', { login: loginName, password, cabinet });
+      queryClient.clear();
+      setUser(current);
     },
     async logout() {
       await api.post('/api/auth/logout');
+      queryClient.clear();
       setUser(null);
     },
     refresh,

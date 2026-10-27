@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './lib/auth';
 import { Layout } from './components/Layout';
@@ -33,12 +33,16 @@ const queryClient = new QueryClient({
 
 function Router() {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) return <div className="flex min-h-screen items-center justify-center"><Spinner /></div>;
   if (!user) return <LoginPage />;
   if (user.mustChangePassword) return <ChangePasswordPage />;
 
   const home = `/${user.cabinet}`;
+  if (location.pathname.startsWith('/admin') && user.cabinet !== 'admin' ||
+      location.pathname.startsWith('/manager') && user.cabinet !== 'manager' ||
+      location.pathname.startsWith('/employee') && user.cabinet !== 'employee') return <Navigate to={home} replace />;
 
   return (
     <Routes>
@@ -72,7 +76,7 @@ function Router() {
         <Route path="lectures" element={<Lectures scope="manage" />} />
         <Route path="certificates" element={<Certificates scope="manage" />} />
         <Route path="permits" element={<Certificates scope="manage" />} />
-        <Route path="ai" element={<AiSettings />} />
+        <Route path="ai" element={<Navigate to="/manager" replace />} />
         <Route path="audit" element={<AuditLog />} />
         <Route path="profile" element={<Profile />} />
         <Route path="pages/:slug" element={<CustomPage />} />
