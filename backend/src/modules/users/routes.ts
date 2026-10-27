@@ -149,12 +149,18 @@ export async function usersRoutes(app: FastifyInstance) {
             positionId: body.positionId ?? null,
           });
         } else if (!body.roleCodes.includes(ROLE.ADMIN) && !body.roleCodes.includes(ROLE.SUPER_ADMIN)) {
-          await tx.insert(schema.managerProfiles).values({
+          const [profile] = await tx.insert(schema.managerProfiles).values({
             userId: user.id,
             organizationId: request.user.organizationId,
             departmentId: body.departmentId ?? null,
             positionId: body.positionId ?? null,
-          });
+          }).returning();
+          if (body.departmentId) {
+            const [department] = await tx.select({ id: schema.departments.id }).from(schema.departments)
+              .where(and(eq(schema.departments.id, body.departmentId), eq(schema.departments.organizationId, request.user.organizationId), isNull(schema.departments.deletedAt)));
+            if (!department) throw ValidationError('Подразделение не найдено.');
+            await tx.insert(schema.managerDepartments).values({ managerProfileId: profile.id, departmentId: department.id, includeChildren: true });
+          }
         }
 
         return user;
@@ -410,9 +416,12 @@ export async function usersRoutes(app: FastifyInstance) {
         })
         .from(schema.managerProfiles)
         .innerJoin(schema.users, eq(schema.users.id, schema.managerProfiles.userId))
+        .innerJoin(schema.userRoles, eq(schema.userRoles.userId, schema.users.id))
+        .innerJoin(schema.roles, eq(schema.roles.id, schema.userRoles.roleId))
         .where(
           and(
             eq(schema.managerProfiles.organizationId, request.user.organizationId),
+            eq(schema.roles.code, ROLE.MANAGER),
             isNull(schema.users.deletedAt),
           ),
         );

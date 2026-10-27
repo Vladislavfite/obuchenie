@@ -16,10 +16,13 @@ export function Layout() {
 
   if (!user) return null;
 
-  const modules = user.uiModules;
+  const adminModules = new Set(['admin.dashboard', 'admin.users', 'admin.ai', 'admin.integrations', 'admin.ui']);
+  const modules = user.cabinet === 'admin'
+    ? user.uiModules.filter((m) => adminModules.has(m.code)).map((m) => m.code === 'admin.dashboard' ? { ...m, title: 'Статистика' } : m)
+    : user.uiModules;
   const primary = modules.slice(0, 4);
   const rest = modules.slice(4);
-  const pages = user.customPages.map((p) => ({
+  const pages = (user.cabinet === 'admin' ? [] : user.customPages).map((p) => ({
     code: `page.${p.slug}`, title: p.title, route: `/${user.cabinet}/pages/${p.slug}`, cabinet: user.cabinet,
   }));
   const allExtra = [...rest, ...pages];
@@ -29,7 +32,7 @@ export function Layout() {
       {/* Боковое меню на широких экранах */}
       <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white lg:block">
         <div className="flex h-16 items-center border-b border-slate-200 px-5">
-          <span className="text-lg font-bold text-brand-700">TBEDU</span>
+          <span className="text-lg font-bold text-brand-700">Обучение</span>
         </div>
         <nav className="space-y-1 p-3">
           {[...modules, ...pages].map((m) => (
@@ -45,7 +48,7 @@ export function Layout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="text-lg font-bold text-brand-700 lg:hidden">TBEDU</span>
+            <span className="text-lg font-bold text-brand-700 lg:hidden">Обучение</span>
             <span className="hidden truncate text-sm text-slate-500 sm:block">{user.organization.name}</span>
           </div>
           <div className="flex items-center gap-3">
