@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../../lib/api';
 import { Spinner, ErrorBox, PageHeader, Badge, EmptyState, Modal, useToast } from '../../components/ui';
 import { PERMISSION_META, ROLE_TITLES, fmtDateRu } from '@tbedu/shared';
+import { AuditLog } from '../Common';
 
 /* Кабинет администратора. */
 
@@ -15,7 +16,7 @@ export function AdminHome() {
 
   return (
     <div>
-      <PageHeader title="Панель администратора" subtitle="Состояние системы" />
+      <PageHeader title="Статистика" subtitle="Состояние системы" />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Пользователей" value={`${data.users.active} / ${data.users.total}`} />
@@ -52,18 +53,7 @@ export function AdminHome() {
         </div></div>
       </div>
 
-      <h2 className="mb-3 font-semibold">Последние действия</h2>
-      <div className="card divide-y divide-slate-100">
-        {data.recentAudit.map((r: any) => (
-          <div key={r.id} className="flex flex-wrap items-start justify-between gap-2 px-4 py-2.5">
-            <div className="min-w-0">
-              <p className="text-sm text-slate-900">{r.actionLabel}</p>
-              {r.details && <p className="truncate text-xs text-slate-500">{r.details}</p>}
-            </div>
-            <p className="text-xs text-slate-400">{new Date(r.createdAt).toLocaleString('ru-RU')}</p>
-          </div>
-        ))}
-      </div>
+      <AuditLog />
     </div>
   );
 }

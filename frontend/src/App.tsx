@@ -11,13 +11,14 @@ import { MyTrainings, TrainingDetail } from './pages/employee/MyTrainings';
 import { ModuleView } from './pages/employee/ModuleView';
 import { TestRunner } from './pages/employee/TestRunner';
 
+import { People } from './pages/admin/People';
 import { ManagerHome } from './pages/manager/ManagerHome';
 import { ManagerTrainings } from './pages/manager/Trainings';
 import { TrainingConstructor, ModuleEditor } from './pages/manager/Constructor';
 import { Employees } from './pages/manager/Employees';
 import { Assignments } from './pages/manager/Assignments';
 
-import { AdminHome, Users, AiSettings, Integrations, UiSettings, Permissions, PlatformSettings } from './pages/admin/Admin';
+import { AdminHome, AiSettings, Integrations, UiSettings, Permissions, PlatformSettings } from './pages/admin/Admin';
 import { Certificates, MyResults, Results, Lectures, AuditLog, Profile, CustomPage } from './pages/Common';
 
 const queryClient = new QueryClient({
@@ -79,28 +80,28 @@ function Router() {
 
       <Route path="/admin" element={<Layout />}>
         <Route index element={<AdminHome />} />
-        <Route path="users" element={<Users />} />
-        <Route path="managers" element={<Users />} />
-        <Route path="employees" element={<Employees />} />
-        <Route path="trainings" element={<ManagerTrainings />} />
-        <Route path="trainings/:id" element={<TrainingConstructor />} />
-        <Route path="modules/:id" element={<ModuleEditor />} />
-        <Route path="assignments" element={<Assignments />} />
-        <Route path="lectures" element={<Lectures scope="manage" />} />
-        <Route path="certificates" element={<Certificates scope="manage" />} />
-        <Route path="permits" element={<Certificates scope="manage" />} />
+        <Route path="users" element={<People />} />
+        <Route path="managers" element={<Navigate to="/admin/users" replace />} />
+        <Route path="employees" element={<Navigate to="/admin/users" replace />} />
+        <Route path="trainings" element={<Navigate to="/admin" replace />} />
+        <Route path="trainings/:id" element={<Navigate to="/admin" replace />} />
+        <Route path="modules/:id" element={<Navigate to="/admin" replace />} />
+        <Route path="assignments" element={<Navigate to="/admin" replace />} />
+        <Route path="lectures" element={<Navigate to="/admin" replace />} />
+        <Route path="certificates" element={<Navigate to="/admin" replace />} />
+        <Route path="permits" element={<Navigate to="/admin" replace />} />
         <Route path="ai" element={<AiSettings />} />
         <Route path="integrations" element={<Integrations />} />
         <Route path="ui" element={<UiSettings />} />
-        <Route path="pages" element={<UiSettings />} />
-        <Route path="permissions" element={<Permissions />} />
-        <Route path="settings" element={<PlatformSettings />} />
-        <Route path="audit" element={<AuditLog />} />
-        <Route path="organization" element={<PlatformSettings />} />
-        <Route path="departments" element={<Employees />} />
-        <Route path="positions" element={<Employees />} />
-        <Route path="professions" element={<Employees />} />
-        <Route path="files" element={<AuditLog />} />
+        <Route path="pages" element={<Navigate to="/admin" replace />} />
+        <Route path="permissions" element={<Navigate to="/admin" replace />} />
+        <Route path="settings" element={<Navigate to="/admin" replace />} />
+        <Route path="audit" element={<Navigate to="/admin" replace />} />
+        <Route path="organization" element={<Navigate to="/admin" replace />} />
+        <Route path="departments" element={<Navigate to="/admin/users" replace />} />
+        <Route path="positions" element={<Navigate to="/admin/users" replace />} />
+        <Route path="professions" element={<Navigate to="/admin/users" replace />} />
+        <Route path="files" element={<Navigate to="/admin" replace />} />
       </Route>
 
       <Route path="*" element={<Navigate to={home} replace />} />

@@ -152,7 +152,7 @@ export const AUDIT_LABELS: Record<string, string> = {
 
 export const UI_MODULES = [
   // admin
-  { code: 'admin.dashboard', cabinet: 'admin', title: 'Dashboard', route: '/admin', isCore: true },
+  { code: 'admin.dashboard', cabinet: 'admin', title: 'Статистика', route: '/admin', isCore: true },
   { code: 'admin.users', cabinet: 'admin', title: 'Пользователи', route: '/admin/users', isCore: true },
   { code: 'admin.managers', cabinet: 'admin', title: 'Руководители', route: '/admin/managers', isCore: true },
   { code: 'admin.employees', cabinet: 'admin', title: 'Сотрудники', route: '/admin/employees', isCore: true },
