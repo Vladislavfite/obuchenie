@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { and, eq, desc } from 'drizzle-orm';
+import { z } from 'zod';
+import { Forbidden } from '../../core/errors.js';
 import { loginBodySchema, changePasswordSchema } from '@tbedu/shared';
 import { db, schema } from '../../db/client.js';
 import { config } from '../../core/config.js';
@@ -27,33 +29,37 @@ export async function authRoutes(app: FastifyInstance) {
       schema: {
         tags: ['auth'],
         summary: 'Вход в систему',
-        body: { type: 'object', required: ['login', 'password'], properties: { login: { type: 'string' }, password: { type: 'string' } } },
+        body: { type: 'object', required: ['login', 'password'], properties: { login: { type: 'string' }, password: { type: 'string' }, cabinet: { type: 'string', enum: ['admin', 'manager', 'employee'] } } },
       },
     },
     async (request, reply) => {
-      const body = loginBodySchema.parse(request.body);
+      const body = loginBodySchema.extend({ cabinet: z.enum(['admin', 'manager', 'employee']).optional() }).parse(request.body);
       const result = await service.login(body.login, body.password, {
         ip: request.ip,
         userAgent: request.headers['user-agent'],
       });
 
-      reply.setCookie(SESSION_COOKIE, result.token, cookieOptions(Math.floor(config.sessionTtlMs / 1000)));
-
       const session = await service.resolveSession(result.token);
-      return ok(await service.currentUser(session!));
+      const current = await service.currentUser(session!);
+      if (body.cabinet && current.cabinet !== body.cabinet) {
+        await service.logout(session!.sessionId);
+        throw Forbidden('Эта учётная запись относится к другому кабинету. Выберите нужный кабинет.');
+      }
+      reply.setCookie(SESSION_COOKIE, result.token, cookieOptions(Math.floor(config.sessionTtlMs / 1000)));
+      return ok(current);
     },
   );
 
   app.post('/api/auth/logout', { schema: { tags: ['auth'], summary: 'Выход' } }, async (request, reply) => {
     if (request.session) {
       await service.logout(request.session.sessionId);
-      await logAudit({
+      try { await logAudit({
         organizationId: request.session.organizationId,
         actorUserId: request.session.userId,
         actorLabel: request.session.fullName,
         action: 'logout',
         ip: request.ip,
-      });
+      }); } catch (error) { request.log.error(error, 'Не удалось записать выход в журнал'); }
     }
     reply.clearCookie(SESSION_COOKIE, { path: '/' });
     return ok({ loggedOut: true });

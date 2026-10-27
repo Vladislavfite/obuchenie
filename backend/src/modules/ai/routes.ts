@@ -3,7 +3,7 @@ import { and, eq, desc, sql } from 'drizzle-orm';
 import { aiSettingsSchema, aiGenerateSchema, PERMISSION, sanitizeRichText, richTextToPlain } from '@tbedu/shared';
 import { db, schema } from '../../db/client.js';
 import { ok } from '../../core/response.js';
-import { requireAuth, requirePermission } from '../../core/context.js';
+import { requireAuth, requirePermission, requireRole } from '../../core/context.js';
 import { config } from '../../core/config.js';
 import { encryptSecret, decryptSecret, maskKey } from '../../core/crypto.js';
 import { ValidationError, Forbidden, AiProviderError } from '../../core/errors.js';
@@ -53,9 +53,21 @@ async function assertAiAllowed(request: { user: { organizationId: string; roles:
 }
 
 export async function aiRoutes(app: FastifyInstance) {
-  /* Настройки. Ключ в ответе — только маска. */
+  app.get('/api/ai/availability',
+    { onRequest: [requireAuth, requirePermission(PERMISSION.AI_USE)] },
+    async (request) => {
+      const settings = await loadSettings(request.user.organizationId);
+      const allowed = (settings?.allowedRoles as string[] | undefined) ?? [];
+      let configured = false;
+      if (settings?.enabled) {
+        try { await resolveApiKey(request.user.organizationId, settings.providerCode); configured = true; } catch { /* настроить может только администратор */ }
+      }
+      return ok({ available: !!settings?.enabled && configured && (!allowed.length || request.user.roles.some((r) => allowed.includes(r))) });
+    });
+
+  /* Настройки доступны только администратору. */
   app.get('/api/ai/settings',
-    { onRequest: [requireAuth, requirePermission(PERMISSION.AI_CONFIGURE, PERMISSION.AI_USE)] },
+    { onRequest: [requireAuth, requirePermission(PERMISSION.AI_CONFIGURE), requireRole('ADMIN', 'SUPER_ADMIN')] },
     async (request) => {
       const settings = await loadSettings(request.user.organizationId);
       const keys = await db.select({ providerCode: schema.aiApiKeys.providerCode, last4: schema.aiApiKeys.last4 })
@@ -74,7 +86,7 @@ export async function aiRoutes(app: FastifyInstance) {
     });
 
   app.put('/api/ai/settings',
-    { onRequest: [requireAuth, requirePermission(PERMISSION.AI_CONFIGURE)] },
+    { onRequest: [requireAuth, requirePermission(PERMISSION.AI_CONFIGURE), requireRole('ADMIN', 'SUPER_ADMIN')] },
     async (request) => {
       const body = aiSettingsSchema.parse(request.body);
 
@@ -125,7 +137,7 @@ export async function aiRoutes(app: FastifyInstance) {
 
   /* Проверка ключа без генерации контента. */
   app.post('/api/ai/test',
-    { onRequest: [requireAuth, requirePermission(PERMISSION.AI_CONFIGURE)] },
+    { onRequest: [requireAuth, requirePermission(PERMISSION.AI_CONFIGURE), requireRole('ADMIN', 'SUPER_ADMIN')] },
     async (request) => {
       const settings = await loadSettings(request.user.organizationId);
       const provider = settings?.providerCode ?? 'anthropic';
@@ -304,7 +316,7 @@ export async function aiRoutes(app: FastifyInstance) {
 
   /* Журнал обращений к ИИ. Тексты запросов не хранятся. */
   app.get('/api/ai/requests',
-    { onRequest: [requireAuth, requirePermission(PERMISSION.AI_CONFIGURE)] },
+    { onRequest: [requireAuth, requirePermission(PERMISSION.AI_CONFIGURE), requireRole('ADMIN', 'SUPER_ADMIN')] },
     async (request) => {
       const rows = await db.select({
           request: schema.aiRequests,

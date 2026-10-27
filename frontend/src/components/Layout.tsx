@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { initials } from '@tbedu/shared';
 import { useAuth } from '../lib/auth';
 
@@ -13,13 +13,22 @@ export function Layout() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [logoutError, setLogoutError] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+  async function signOut(destination = '/') {
+    setLoggingOut(true); setLogoutError('');
+    try { await logout(); navigate(destination, { replace: true }); }
+    catch { setLogoutError('Не удалось выйти. Проверьте соединение и попробуйте снова.'); }
+    finally { setLoggingOut(false); }
+  }
 
   if (!user) return null;
 
   const adminModules = new Set(['admin.dashboard', 'admin.users', 'admin.ai', 'admin.integrations', 'admin.ui']);
   const modules = user.cabinet === 'admin'
     ? user.uiModules.filter((m) => adminModules.has(m.code)).map((m) => m.code === 'admin.dashboard' ? { ...m, title: 'Статистика' } : m)
-    : user.uiModules;
+    : user.uiModules.filter((m) => user.cabinet !== 'manager' || m.code !== 'manager.ai');
   const primary = modules.slice(0, 4);
   const rest = modules.slice(4);
   const pages = (user.cabinet === 'admin' ? [] : user.customPages).map((p) => ({
@@ -28,12 +37,13 @@ export function Layout() {
   const allExtra = [...rest, ...pages];
 
   return (
-    <div className="min-h-screen lg:flex">
+    <div className={`min-h-screen lg:flex ${user.cabinet !== 'admin' ? 'learning-shell' : ''}`}>
       {/* Боковое меню на широких экранах */}
       <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white lg:block">
         <div className="flex h-16 items-center border-b border-slate-200 px-5">
           <span className="text-lg font-bold text-brand-700">Обучение</span>
         </div>
+        {user.cabinet !== 'admin' && <div className="rail-profile"><div className="rail-avatar">{initials(user.user.fullName)}</div><strong>{user.user.fullName}</strong><small>{user.cabinet === 'manager' ? 'Руководитель' : 'Сотрудник'}</small></div>}
         <nav className="space-y-1 p-3">
           {[...modules, ...pages].map((m) => (
             <NavLink key={m.code} to={m.route} end={m.route === `/${user.cabinet}`}
@@ -43,6 +53,7 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
+        {user.cabinet !== 'admin' && <div className="rail-switch"><button type="button" onClick={() => void signOut(user.cabinet === 'manager' ? '/login/employee' : '/login/manager')}>{user.cabinet === 'manager' ? 'Войти как сотрудник' : 'Войти как руководитель'} →</button></div>}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -59,13 +70,12 @@ export function Layout() {
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
               {initials(user.user.fullName)}
             </div>
-            <button type="button" onClick={() => void logout()}
-              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600" title="Выйти">
-              ⏻
-            </button>
+            <button type="button" disabled={loggingOut} onClick={() => void signOut()}
+              className="exit-button" aria-label="Выйти из аккаунта">{loggingOut ? 'Выход…' : 'Выйти'}</button>
           </div>
         </header>
 
+        {logoutError && <p role="alert" className="bg-red-50 px-4 py-2 text-sm text-red-700">{logoutError}</p>}
         <main className="flex-1 px-4 py-5 pb-24 sm:px-6 lg:pb-8">
           <div className="mx-auto max-w-6xl"><Outlet /></div>
         </main>
@@ -99,6 +109,7 @@ export function Layout() {
               <span className="font-semibold">Все разделы</span>
               <button type="button" onClick={() => setMenuOpen(false)} className="p-2 text-slate-400">✕</button>
             </div>
+            {user.cabinet !== 'admin' && <button type="button" className="btn-secondary mb-3 w-full" onClick={() => void signOut(user.cabinet === 'manager' ? '/login/employee' : '/login/manager')}>{user.cabinet === 'manager' ? 'Войти как сотрудник' : 'Войти как руководитель'}</button>}
             <div className="grid grid-cols-2 gap-2">
               {allExtra.map((m) => (
                 <NavLink key={m.code} to={m.route} onClick={() => setMenuOpen(false)}

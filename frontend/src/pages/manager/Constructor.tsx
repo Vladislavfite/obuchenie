@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
 import { Spinner, ErrorBox, PageHeader, Badge, Modal, useToast, EmptyState } from '../../components/ui';
 
 /* Конструктор обучения.
@@ -103,6 +104,23 @@ export function ModuleEditor() {
   const [draft, setDraft] = useState<any>(null);
   const [tab, setTab] = useState<'content' | 'questions' | 'settings'>('content');
   const [publishInfo, setPublishInfo] = useState<any>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiText, setAiText] = useState('');
+  const [aiError, setAiError] = useState('');
+  const { can } = useAuth();
+  const availability = useQuery({ queryKey: ['ai-availability'], queryFn: () => api.get<{ available: boolean }>('/api/ai/availability'), enabled: can('ai.use') });
+  const generate = useMutation({
+    mutationFn: () => api.post<any>('/api/ai/generate/course', { text: aiText, count: 5, images: false }),
+    onSuccess: (result) => {
+      setDraft((previous: any) => ({ ...previous,
+        contentItems: [...previous.contentItems, ...result.contentItems.map((item: any, i: number) => ({ ...item, sortOrder: previous.contentItems.length + i }))],
+        questions: [...previous.questions, ...result.questions.map((item: any, i: number) => ({ ...item, sortOrder: previous.questions.length + i }))],
+      }));
+      setAiOpen(false); setAiText(''); setAiError('');
+      toast.show('Материал добавлен в черновик. Проверьте его и сохраните.');
+    },
+    onError: (e) => setAiError(e instanceof ApiError ? e.message : 'Не удалось подготовить материал.'),
+  });
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['module', id],
@@ -140,8 +158,8 @@ export function ModuleEditor() {
     onError: (e) => toast.show(e instanceof ApiError ? e.message : 'Не удалось опубликовать', 'error'),
   });
 
-  if (isLoading || !draft) return <Spinner />;
   if (error) return <ErrorBox error={error} onRetry={() => void refetch()} />;
+  if (isLoading || !draft) return <Spinner />;
 
   const set = (patch: Record<string, unknown>) => setDraft({ ...draft, ...patch });
 
@@ -191,10 +209,19 @@ export function ModuleEditor() {
           ))}
       </div>
 
+      {tab === 'content' && availability.data?.available && <div className="ai-inline"><div><strong>Помощь с материалом</strong><p>Вставьте текст документа, и помощник подготовит материал и вопросы.</p></div><button type="button" className="btn-secondary" onClick={() => { setAiError(''); setAiOpen(true); }}>Подготовить с ИИ</button></div>}
       {tab === 'content' && <ContentEditor draft={draft} set={set} />}
       {tab === 'questions' && <QuestionsEditor draft={draft} set={set} />}
       {tab === 'settings' && <SettingsEditor draft={draft} set={set} versions={data.versions} />}
 
+      <Modal open={aiOpen} title="Подготовить материал" onClose={() => { if (!generate.isPending) setAiOpen(false); }}>
+        <form onSubmit={(e) => { e.preventDefault(); setAiError(''); generate.mutate(); }} className="space-y-4">
+          <p className="text-sm text-slate-600">Вставьте текст документа. Подготовленные разделы и вопросы добавятся к текущему черновику.</p>
+          <label className="block"><span className="label">Текст документа</span><textarea className="field" rows={9} minLength={200} maxLength={400000} required value={aiText} onChange={(e) => setAiText(e.target.value)} /><span className="hint">Не менее 200 символов. Перед публикацией проверьте материал и ответы.</span></label>
+          {aiError && <p role="alert" className="text-sm text-red-600">{aiError}</p>}
+          <button type="submit" className="btn-primary" disabled={generate.isPending}>{generate.isPending ? 'Подготавливаем…' : 'Подготовить'}</button>
+        </form>
+      </Modal>
       {toast.element}
     </div>
   );
