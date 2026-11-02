@@ -147,10 +147,13 @@ export function ModuleEditor() {
   });
 
   const publish = useMutation({
-    mutationFn: () => api.post<any>(`/api/training/modules/${id}/publish`),
+    mutationFn: async () => {
+      await api.put(`/api/training/modules/${id}/draft`, draft);
+      return api.post<any>(`/api/training/modules/${id}/publish`);
+    },
     onSuccess: (result) => {
       toast.show(result.createdNewVersion
-        ? `Опубликована версия ${result.version}. Версия ${result.archivedVersion} отправлена в архив.`
+        ? `Опубликована версия ${result.version}.${result.archivedVersion != null ? ` Версия ${result.archivedVersion} отправлена в архив.` : ''}`
         : 'Изменения опубликованы без создания новой версии.');
       setPublishInfo(null);
       void queryClient.invalidateQueries({ queryKey: ['module', id] });
@@ -171,11 +174,11 @@ export function ModuleEditor() {
       <PageHeader title={draft.title || 'Модуль'}
         subtitle={`Текущая версия: ${data.current.version} (${data.current.status === 'published' ? 'опубликована' : 'черновик'})`}
         actions={<>
-          <button type="button" className="btn-secondary" disabled={save.isPending} onClick={() => save.mutate()}>
+          <button type="button" className="btn-secondary" disabled={save.isPending || publish.isPending} onClick={() => save.mutate()}>
             {save.isPending ? 'Сохранение…' : 'Сохранить'}
           </button>
-          <button type="button" className="btn-primary" disabled={publish.isPending} onClick={() => publish.mutate()}>
-            Опубликовать
+          <button type="button" className="btn-primary" disabled={publish.isPending || save.isPending} onClick={() => publish.mutate()}>
+            {publish.isPending ? 'Публикация…' : 'Опубликовать'}
           </button>
         </>} />
 

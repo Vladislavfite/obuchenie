@@ -28,7 +28,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const init: RequestInit = {
     method,
     credentials: 'same-origin',
-    headers: body instanceof FormData ? {} : { 'content-type': 'application/json' },
+    headers: body === undefined || body instanceof FormData ? {} : { 'content-type': 'application/json' },
   };
   if (body !== undefined) {
     init.body = body instanceof FormData ? body : JSON.stringify(body);
